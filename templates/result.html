@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Karnataka Itinerary</title>
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Custom CSS -->
+    <link href="/static/style.css" rel="stylesheet">
+    <style>
+        /* Print media query for clean travel brochure */
+        @media print {
+            body {
+                background: white !important;
+                -webkit-print-color-adjust: exact;
+            }
+            .no-print {
+                display: none !important;
+            }
+            .container {
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            .glass-card {
+                background: white !important;
+                backdrop-filter: none !important;
+                box-shadow: none !important;
+                border: 1px solid #e5e7eb !important;
+                margin-bottom: 20px !important;
+            }
+            h1, h2, h3 {
+                color: #1f2937 !important;
+            }
+            .text-gray-600 {
+                color: #4b5563 !important;
+            }
+            .bg-gradient-to-r {
+                background: linear-gradient(to right, #10b981, #f59e0b) !important;
+                -webkit-background-clip: text !important;
+                -webkit-text-fill-color: transparent !important;
+            }
+            /* Ensure page breaks avoid splitting cards */
+            .glass-card {
+                page-break-inside: avoid;
+            }
+        }
+        /* Accordion styles */
+        .accordion-header {
+            @apply cursor-pointer flex items-center justify-between p-4 bg-emerald-50 rounded-t-lg hover:bg-emerald-100 transition-colors;
+        }
+        .accordion-content {
+            @apply max-h-0 overflow-hidden transition-max-height duration-300 ease-in-out bg-white rounded-b-lg border-t border-emerald-100;
+        }
+        .accordion-content.open {
+            @apply max-h-[500px]; /* Adjust as needed */
+        }
+        .accordion-icon {
+            @apply transition-transform duration-300;
+        }
+        .accordion-icon.open {
+            @apply rotate-180;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col">
+    <div class="container mx-auto px-4 py-8 flex-grow">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-600 to-amber-600">
+                Your Karnataka Adventure
+            </h1>
+            <p class="mt-2 text-lg text-gray-600">
+                {{ duration }} days in {{ region }} | {{ budget_tier }} | {{ interests|join(', ') }}
+            </p>
+        </header>
+
+        <!-- Summary Card -->
+        <div class="glass-card mb-6 no-print">
+            <div class="p-6">
+                <h2 class="text-2xl font-semibold mb-4 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                    </svg>
+                    Trip Overview
+                </h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                    <div>
+                        <p class="text-sm text-gray-500">Total Estimated Budget</p>
+                        <p class="text-2xl font-bold text-emerald-600">{{ total_budget }} USD</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">Daily Average</p>
+                        <p class="text-2xl font-bold text-amber-600">{{ daily_budget }} USD/day</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">Starting Point</p>
+                        <p class="text-2xl font-bold text-emerald-600">{{ start_point }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Itinerary Accordion -->
+        <section class="mb-6">
+            <h2 class="text-2xl font-semibold mb-6 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                </svg>
+                Day-by-Day Itinerary
+            </h2>
+            <div class="space-y-4" id="accordionContainer">
+                {% for day in itinerary %}
+                <div class="glass-card">
+                    <div class="accordion-header" onclick="toggleAccordion(this)">
+                        <div class="flex w-full items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                <span class="text-xl font-semibold text-emerald-800">Day {{ day.day }}</span>
+                                <p class="text-sm text-gray-500">{{ day.region }}</p>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <span class="badge bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full text-sm">{{ day.estimated_budget }} USD/day</span>
+                                <svg id="accordionIcon{{ day.day }}" class="accordion-icon h-5 w-5 text-emerald-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-content" id="accordionContent{{ day.day }}">
+                        <div class="p-6">
+                            <div class="space-y-5">
+                                <!-- Morning -->
+                                <div class="border-l-4 border-emerald-200 pl-4">
+                                    <p class="font-medium text-emerald-600">Morning</p>
+                                    <p class="mb-2 text-gray-700">{{ day.morning.activity }}</p>
+                                    {% if day.morning.food %}
+                                    <p class="text-sm text-gray-600">Breakfast suggestion: {{ day.morning.food }}</p>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Afternoon -->
+                                <div class="border-l-4 border-emerald-200 pl-4">
+                                    <p class="font-medium text-emerald-600">Afternoon</p>
+                                    <p class="mb-2 text-gray-700">{{ day.afternoon.activity }}</p>
+                                    {% if day.afternoon.food %}
+                                    <p class="text-sm text-gray-600">Lunch recommendation: {{ day.afternoon.food }}</p>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Evening -->
+                                <div class="border-l-4 border-emerald-200 pl-4">
+                                    <p class="font-medium text-emerald-600">Evening</p>
+                                    <p class="mb-2 text-gray-700">{{ day.evening.activity }}</p>
+                                    {% if day.evening.food %}
+                                    <p class="text-sm text-gray-600">Dinner suggestion: {{ day.evening.food }}</p>
+                                    {% endif %}
+                                    {% if day.evening.tip %}
+                                    <div class="mt-4 p-4 bg-emerald-50 rounded">
+                                        <p class="font-medium text-emerald-800">Insider Tip:</p>
+                                        <p class="text-sm text-gray-700">{{ day.evening.tip.kn }}</p>
+                                        <p class="text-xs text-gray-500 italic mt-1">{{ day.evening.tip.en }}</p>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+
+        <!-- Packing Essentials & Phrase of the Day -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <!-- Packing Essentials -->
+            <div class="glass-card">
+                <div class="p-6">
+                    <h2 class="text-xl font-semibold mb-4 flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16l3-3-3-3m8 8l3-3-3-3M3 20a2 2 0 012-2V8a2 2 0 012-2h5.586a1 1 0 00.707-2.943L13.414 3H11a2 2 0 00-2-2v1a1 1 0 01-1-1H4a1 1 0 01-1-1V3a1 1 0 011-1h6a1 1 0 011-1h2a1 1 0 011 1v3.414A2 2 0 0111 7.586l3.293 3.293a1 1 0 011.414 0l.707.707A2 2 0 0116 9.414v5.586a2 2 0 01-2 2H3z"/>
+                        </svg>
+                        Packing Essentials
+                    </h2>
+                    <ul class="list-disc pl-5 space-y-2 text-gray-700">
+                        <li>Comfortable walking shoes</li>
+                        <li>Lightweight clothing for warm weather</li>
+                        <li>Raincoat or umbrella (especially for Coorg & coastal areas)</li>
+                        <li>Sunscreen and hat</li>
+                        <li>Reusable water bottle</li>
+                        <li>Camera or smartphone for photos</li>
+                        <li>Portable charger</li>
+                        <li>Basic medical kit</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Kannada Phrase of the Day -->
+            <div class="glass-card">
+                <div class="p-6">
+                    <h2 class="text-xl font-semibold mb-4 flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                        </svg>
+                        Kannada Phrase of the Day
+                    </h2>
+                    <div class="text-center">
+                        <p class="text-3xl font-bold text-emerald-600 mb-2">ಸ್ವಾಗತ!</p>
+                        <p class="text-lg text-gray-700">Swagata! (Welcome!)</p>
+                        <p class="mt-3 text-sm text-gray-500">Use this friendly greeting to start conversations with locals.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex flex-col sm:flex-row justify-center gap-4 no-print">
+            <button onclick="window.print()"
+                    class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 px-6 rounded-lg
+                           transition-transform hover:scale-105">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16l3-3-3-3m8 8l3-3-3-3M3 20a2 2 0 012-2V8a2 2 0 012-2h5.586a1 1 0 00.707-2.943L13.414 3H11a2 2 0 00-2-2v1a1 1 0 01-1-1H4a1 1 0 01-1-1V3a1 1 0 011-1h6a1 1 0 011-1h2a1 1 0 011 1v3.414A2 2 0 0111 7.586l3.293 3.293a1 1 0 001.414 0l.707.707A2 2 0 0116 9.414v5.586a2 2 0 01-2 2H3z"/>
+                </svg>
+                Print / Save as PDF
+            </button>
+            <a href="/" class="flex-1 bg-gradient-to-r from-emerald-600 to-amber-600 text-white font-bold py-3 px-6 rounded-lg
+                              hover:bg-gradient-to-l focus:outline-none focus:ring-2 focus-ring-emerald-500 focus-ring-opacity-75
+                              transition-transform hover:scale-105">
+                Plan Another Trip
+            </a>
+        </div>
+    </div>
+
+    <footer class="mt-auto text-center py-4 text-sm text-gray-500 no-print">
+        © 2026 Karnataka Digital Innovation Hackathon | Problem Statement #6: AI Travel Planner for Karnataka
+    </footer>
+
+    <script>
+        // Accordion functionality
+        function toggleAccordion(header) {
+            const content = header.nextElementSibling;
+            const icon = header.querySelector('.accordion-icon');
+
+            // Close all other accordion items
+            document.querySelectorAll('.accordion-content').forEach(item => {
+                if (item !== content && item.classList.contains('open')) {
+                    item.classList.remove('open');
+                    item.previousElementSibling.querySelector('.accordion-icon').classList.remove('open');
+                }
+            });
+
+            // Toggle current item
+            content.classList.toggle('open');
+            icon.classList.toggle('open');
+        }
+
+        // Initialize first accordion as open (optional)
+        document.addEventListener('DOMContentLoaded', function() {
+            const firstAccordion = document.querySelector('.accordion-content');
+            if (firstAccordion) {
+                firstAccordion.classList.add('open');
+                const firstIcon = document.querySelector('.accordion-icon');
+                if (firstIcon) {
+                    firstIcon.classList.add('open');
+                }
+            }
+        });
+    </script>
+</body>
+</html>
